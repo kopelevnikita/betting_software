@@ -1,0 +1,87 @@
+version: "3.7"
+
+services:
+  postgres_bet_maker:
+    image: postgres:14-bullseye
+    container_name: postgres_bet_maker
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME_BET_MAKER}
+    volumes:
+      - postgres_bet_maker_data:/var/lib/postgresql/data
+    env_file:
+      - ./bet_maker/.env
+    ports:
+      - "5433:5432"
+    networks:
+      - betting_network
+
+  postgres_link_provider:
+    image: postgres:14-bullseye
+    container_name: postgres_link_provider
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME_LINK_PROVIDER}
+    volumes:
+      - postgres_link_provider_data:/var/lib/postgresql/data
+    env_file:
+      - ./link_provider/.env
+    ports:
+      - "5434:5432"
+    networks:
+      - betting_network
+
+  redis:
+    image: redis:latest
+    container_name: betting_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - betting_network
+
+  bet_maker:
+    build:
+      context: ./bet_maker
+      dockerfile: ./Dockerfile
+    container_name: bet_maker
+    restart: always
+    env_file:
+      - ./bet_maker/.env
+    depends_on:
+      - postgres_bet_maker
+      - redis
+    ports:
+      - "8000:8000"
+    networks:
+      - betting_network
+
+  link_provider:
+    build:
+      context: ./link_provider
+      dockerfile: ./Dockerfile
+    container_name: link_provider
+    restart: always
+    env_file:
+      - ./link_provider/.env
+    depends_on:
+      - postgres_link_provider
+    ports:
+      - "8001:8001"
+    networks:
+      - betting_network
+
+volumes:
+  postgres_bet_maker_data:
+  postgres_link_provider_data:
+  redis_data:
+
+networks:
+  betting_network:
+    driver: bridge
